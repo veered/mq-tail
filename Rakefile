@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "mq-tail"
   gem.homepage = "http://github.com/Veered/mq-tail"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{A tail like utility for watching a RabbitMQ queue. }
+  gem.description = %Q{A tail like utility for watching a RabbitMQ queue. }
   gem.email = "lucas@likeness.com"
   gem.authors = ["Lucas Hansen"]
   # dependencies defined in Gemfile

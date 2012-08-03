@@ -12,6 +12,11 @@ doc
 # bundler
 .bundle
 
+# gem
+Gemfile.lock
+*.gemspec
+*.gem
+
 # jeweler generated
 pkg
 
