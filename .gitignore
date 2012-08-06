@@ -14,7 +14,6 @@ doc
 
 # gem
 Gemfile.lock
-*.gemspec
 *.gem
 
 # jeweler generated
