@@ -38,7 +38,7 @@ Main {
   }
 
   option('throttle', 't'){
-    description 'Throttles the number of messages shown per second. Defaults to 1.'
+    description 'Throttles the number of messages shown per second. Defaults to 100.'
     argument :optional
     cast :int
     defaults 100
