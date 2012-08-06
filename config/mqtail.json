@@ -7,7 +7,7 @@
   ],
   "keys": [
     "@source",
-    "@fields appname",
-    "@fields severity"
+    "@fields.appname",
+    "@fields.severity"
   ]
 }

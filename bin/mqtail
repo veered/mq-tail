@@ -136,9 +136,9 @@ Main {
     end
   end
 
-  # Takes a key path (each key seperated by a space), and returns the corresponding value in the hash
+  # Takes a key path (each key seperated by a period), and returns the corresponding value in the hash
   def get_value(path, hash)
-    path.split(' ').each do |key|
+    path.split('.').each do |key|
       hash = hash[key]
     end
     raise if hash.nil?
