@@ -1,0 +1,13 @@
+{
+  "broker": "my-broker.company.com",
+  "exchange": "my-exchange",
+  "routing_key": "#",
+  "filters": [
+    "\"appname\":\"checkin\""
+  ],
+  "keys": [
+    "@source",
+    "@fields appname",
+    "@fields severity"
+  ]
+}
