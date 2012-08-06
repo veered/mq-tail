@@ -1,0 +1,173 @@
+#!/usr/bin/env ruby
+require 'main'
+
+require 'em-synchrony'
+require 'em-synchrony/amqp'
+
+require 'json'
+
+Main {
+
+  option('config', 'c'){
+    description 'A config file to load settings from.'
+    argument :optional
+  }
+
+  option('broker', 'b'){
+    description 'The address of the AMQP broker.'
+    argument :optional
+    defaults ''
+  }
+
+  option('exchange', 'e'){
+    description 'The name of the exchange to subscribe bind to.'
+    argument :optional
+    defaults ''
+  }
+
+  option('routing_key', 'r'){
+    description 'The routing key to bind on. Matches all keys by default.'
+    argument :optional
+    defaults ''
+  }
+
+  option('filters', 'f'){
+    description 'A list of regex filters to pass the message stream through. If none are given, no messages will be filtered out.'
+    argument :optional
+    arity -1
+  }
+
+  option('throttle', 't'){
+    description 'Throttles the number of messages shown per second. Defaults to 1.'
+    argument :optional
+    cast :int
+    defaults 100
+  }
+
+  option('keys', 'k'){
+    description 'A list of keys in the message to display. If none are given, the raw JSON will be displayed.'
+    argument :optional
+    arity -1
+  }
+
+  # The main run loop of the application
+  def run
+    capture_signals
+    load_config
+
+    EM.synchrony do
+      connect
+      start_throttle
+    end
+  end
+
+  # Closes the connection to AMQP and stops the EM reactor
+  def stop
+
+    if EM.reactor_running?
+      EM::Synchrony.next_tick do
+        @amqp.close
+        EM.stop
+      end
+    end
+
+  end
+
+  # Captures interupt signals for this process and stops the node.
+  def capture_signals
+    %w[ TERM INT QUIT HUP ].each do |signal|
+      Signal.trap(signal) { stop }
+    end
+  end
+
+  # Loads a json config file
+  def load_config
+    if params[:config].given?
+      @config = File.open(File.expand_path(params[:config].value)) { |f| JSON.load(f) }
+
+      @config.each do |key, value|
+        if params.has_key?(key) and params[key].values == params[key].defaults
+          params[key].values = [*value]
+          params[key].given = true
+        end
+      end
+
+    end
+  end
+
+  # Connects to AMQP
+  def connect
+    @amqp = AMQP.connect("amqp://#{ params[:broker].value }")
+    @channel = AMQP::Channel.new(@amqp)
+
+    @queue = @channel.queue('', { 
+      :auto_delete => true,
+      :exclusive => true,
+      :arguments => { 'x-message-ttl' => 30000 }
+    } )
+    @queue.bind(params[:exchange].value, :routing_key => params[:routing_key].value)
+    @queue.subscribe(&method(:process_message))
+  end
+
+  # Processes a new message
+  def process_message(headers, payload)
+    return if throttled?
+    return unless filtered?(payload)
+
+    @throttle += 1
+    display_message(payload)
+  end
+
+  # Displays a message to the console
+  def display_message(message)
+    if params[:keys].given?
+      output = ""
+
+      parsed = JSON.parse(message)
+      params[:keys].values.each do |key|
+        output << get_value(key, parsed).to_s
+        output << " "
+      end
+
+      puts output
+
+    else
+      puts message, ''
+    end
+  end
+
+  # Takes a key path (each key seperated by a space), and returns the corresponding value in the hash
+  def get_value(path, hash)
+    path.split(' ').each do |key|
+      hash = hash[key]
+    end
+    raise if hash.nil?
+
+    hash
+  rescue
+    "ValueNotFound"
+  end
+
+  # Returns true if the message passes all of the filters
+  def filtered?(message)
+    params[:filters].values.all? do |filter|
+      regex = Regexp.new(filter)
+      message.match(regex)
+    end
+  end
+
+  # Sets up the throttle reset
+  def start_throttle
+    @throttle = 0
+
+    EM::Synchrony.add_periodic_timer(1) do
+      @throttle = 0
+    end
+  end
+
+  # Checks if the maximum number of messages per second has been received
+  def throttled?
+    @throttle >= params[:throttle].value
+  end
+
+}
